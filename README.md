@@ -2,11 +2,13 @@
 
 > Super-charge your Pynite workflows
 
-PyniteFEA is excellent and it is generally design-ready. The functions in this package give Pynite powers it does not currently have and generally makes your workflows muuuuchh smoother.
+PyniteFEA is excellent and it is generally design-ready. The functions in this package give Pynite powers it does not currently have (such as bulk results export and exporting analysis-ready models to JSON).
+
+These are opinionated tools that are not intended to be part of the core PyniteFEA package but instead enhance the eco-system around Pynite for production-level engineering work.
 
 Modules included:
 
-- `visualize`: Plot your `FEModel3D` using plotly
+- `visualize`: Plot your `FEModel3D` using plotly (previously in the `pynite_plotly` package)
 - `reports`: Quickly export node and member results in structured dictionaries (previously in the `pynite_reporting` package)
 - `serialize`: Export and import `FEModel3D` objects to JSON
 - `combos`: Convenience function for bulk-adding load combinations to `FEModel3D` objects

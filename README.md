@@ -6,6 +6,7 @@ PyniteFEA is excellent and it is generally design-ready. The functions in this p
 
 Modules included:
 
+- `visualize`: Plot your `FEModel3D` using plotly
 - `reports`: Quickly export node and member results in structured dictionaries (previously in the `pynite_reporting` package)
 - `serialize`: Export and import `FEModel3D` objects to JSON
 - `combos`: Convenience function for bulk-adding load combinations to `FEModel3D` objects
@@ -19,17 +20,42 @@ pip install pynite-tools
 
 ## Dependencies
 
+- Python >= 3.11
 - `PyniteFEA` >= 1.1.0
 - `numpy` >= 2.0.0
 - `deepmerge` >= 2.0.0
 - `pydantic` >= 2.0.0
 
 
+## Examples: `visualize`
+
+```python
+from Pynite import FEModel3D
+import pynite_tools.visualize as pv
+
+model = FEModel3D(...) # Build your model
+
+# pv.plot_model is the "express" function
+pv.plot_model(model, combo_name="LC1")
+
+# pv.Renderer is a class that gives you detailed control of the plot
+model_renderer = pv.Renderer(model, combo_name="LC1")
+
+## For example...
+model_renderer.annotation_size = 5
+model_renderer.window_width = 1200
+model_renderer.window_height = 1000
+
+## Now render the model
+model_renderer.render_model()
+```
+
+
 ## Examples: `reports`
 
 ```python
 from Pynite import FEModel3D
-from pynite_tools import reports as pr
+import pynite_tools.reporting as pr
 
 model = FEModel3D(...) # Build your model here
 
@@ -105,7 +131,7 @@ forces_at_location_ratios = pr.extract_member_actions_by_location(
     )
 
 # Merge result trees into a single tree for serializing to JSON
-merged_tree = pr.merge_trees([force_arrays, forces_minmax, forces_at_locations])
+merged_tree = pr.merge_result_trees([force_arrays, forces_minmax, forces_at_locations])
 ```
 
 ## Examples: `serialize`

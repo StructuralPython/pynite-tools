@@ -1,19 +1,17 @@
 [project]
 name = "pynite-tools"
-version = "0.1.0"
-description = "Add your description here"
+dynamic = ['version', 'description']
 readme = "README.md"
 authors = [
     { name = "Connor Ferster", email = "connorferster@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.3.1",
     "plotly>=6.2.0",
     "plotly-3d-primitives>=0.4.0",
     "pydantic>=2.11.7",
     "pynitefea>=1.1.2",
-    "numpydantic>=1.6.9",
     "deepmerge>=2.0",
 ]
 
@@ -21,8 +19,8 @@ dependencies = [
 pynite-tools = "pynite_tools:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["flit_core>=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [dependency-groups]
 dev = [

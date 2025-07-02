@@ -5,6 +5,7 @@ import numpy as np
 import deepmerge
 import pathlib
 import json
+from Pynite import FEModel3D
 
 
 ACTION_METHODS = {
@@ -26,7 +27,7 @@ REACTIONS = ['RxnFX', 'RxnFY', 'RxnFZ', 'RxnMX', 'RxnMY', 'RxnMZ']
 
 
 def extract_node_reactions(
-    model: "Pynite.FEModel3D", 
+    model: FEModel3D, 
     load_combinations: Optional[list[str]] = None,
     results_key: Optional[str] = "node_reactions",
 ) -> dict[str, dict]:
@@ -75,7 +76,7 @@ def extract_node_reactions(
 
 
 def extract_node_deflections(
-    model: "Pynite.FEModel3D", 
+    model: FEModel3D, 
     load_combinations: Optional[list[str]] = None,
     results_key: Optional[str] = "node_deflections",
 ):
@@ -125,7 +126,7 @@ def extract_node_deflections(
 
 
 def extract_member_arrays(
-    model: "Pynite.FEModel3D", 
+    model: FEModel3D, 
     n_points: int = 1000,
     as_lists: bool = False,
     results_key: Optional[str] = "action_arrays",
@@ -199,7 +200,7 @@ def extract_member_arrays(
 
 
 def extract_member_envelopes(
-        model: "Pynite.FEModel3D", 
+        model: FEModel3D, 
         load_combinations: Optional[list[str]] = None,
         results_key: Optional[str] = "action_envelopes"
     ) -> dict[str, dict]:
@@ -265,7 +266,7 @@ def extract_member_envelopes(
         
 
 def extract_member_actions_by_location(
-    model: "Pynite.FEModel3D", 
+    model: FEModel3D, 
     force_extraction_locations: Optional[dict[str, list[float]]] = None,
     force_extraction_ratios: Optional[dict[str, list[float]]] = None,
     load_combinations: Optional[list[str]] = None,
@@ -413,7 +414,7 @@ def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_
 
 
 def extract_span_envelopes(
-    model: "Pynite.FEModel3D", 
+    model: FEModel3D, 
     load_combinations: Optional[list[str]] = None, 
     actions: Optional[list[str]] = None,
     results_key: Optional[str] = "frame_span_envelopes",
@@ -497,7 +498,7 @@ def extract_span_envelopes(
     return span_envelopes
 
 
-def extract_spans(model: "Pynite.FEModel3D") -> dict[str, list["Pynite.Member3D"]]:
+def extract_spans(model: FEModel3D) -> dict[str, list["Pynite.Member3D"]]:
     """
     Extracts the sub-members for all of the members in the 'model'
     """
@@ -509,7 +510,7 @@ def extract_spans(model: "Pynite.FEModel3D") -> dict[str, list["Pynite.Member3D"
     return member_spans
 
 
-def extract_load_combinations(model: "Pynite.FEModel3D") -> list[str]:
+def extract_load_combinations(model: FEModel3D) -> list[str]:
     """
     Returns a list of the load combination names used in the model
     """
@@ -576,7 +577,7 @@ def node_has_supports(node: "Pynite.Node") -> bool:
     ])
 
 
-def get_node_counts(model: "Pynite.FEModel3D", member_name: str) -> Counter:
+def get_node_counts(model: FEModel3D, member_name: str) -> Counter:
     """
     Counts the number of times that a node is connected within 'member_name'
     for the purpose of identifying potentially cantilevered sub_members.

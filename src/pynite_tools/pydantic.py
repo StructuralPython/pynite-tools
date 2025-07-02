@@ -1,11 +1,72 @@
+import json
+import io
 from pydantic import TypeAdapter, BaseModel, Field
-from typing import Optional, Any, Union, ClassVar
+from typing import Optional, Any, Union, ClassVar, TextIO
 
 from Pynite import FEModel3D, Node3D, Member3D, PhysMember, Material, Section, Spring3D, Quad3D, Plate3D, Mesh, LoadCombo
 
 
-class ExporterMixin:
+def dump(model: FEModel3D, file_io: TextIO, indent: int = 2) -> None:
+    """
+    Writes the 'model' as a JSON data to the file-handler object, 'file_io'.
 
+    'indent': the number of spaces to indent in the file.
+    """
+    model_dict = dump_dict(model)
+    json.dump(model_dict, fp=file_io, indent=indent)
+
+
+def dumps(model: FEModel3D, indent: int = 2) -> str:
+    """
+    Returns the model as JSON string.
+    """
+    model_schema = get_model_schema(model)
+    return model_schema.model_dump_json(indent=indent)
+
+
+def dump_dict(model: FEModel3D) -> dict:
+    """
+    Returns a Python dictionary representing the model.
+
+    The Python dictionary is serializable to JSON.
+    """
+    model_schema = get_model_schema(model)
+    return model_schema.model_dump()
+
+
+
+
+def load(file_io: TextIO) -> FEModel3D:
+    """
+    Returns an FEModel3D from the json data contained within the file.
+    """
+    json_data = json.load(file_io)
+    model_adapter = TypeAdapter(FEModel3DSchema)
+    return model_adapter.validate_python(json_data)
+
+
+def loads(model_json: str) -> FEModel3D:
+    """
+    Returns an FEModel3D based on the provided 'model_json'.
+
+    'model_json': a JSON-serialized str representing an FEModel3D
+    """
+    model_adapter = TypeAdapter(FEModel3DSchema)
+    model_schema = model_adapter.validate_json(model_json)
+    femodel3d = model_schema.to_femodel3d()
+    return femodel3d
+
+
+def get_model_schema(model: FEModel3D) -> dict[str, dict]:
+    """
+    Returns an FEModel3DSchema based on the supplied model.
+    """
+    model_adapter = TypeAdapter(FEModel3DSchema)
+    model_schema = model_adapter.validate_python(model, from_attributes=True)
+    return model_schema
+
+
+class ExporterMixin:
     def to_init_dict(self):
         init_dict = {}
         if self._init_attrs is None:

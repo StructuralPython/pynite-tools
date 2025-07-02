@@ -1,3 +1,4 @@
+from collections import Counter
 import math
 from typing import Optional, Union, Any
 import numpy as np
@@ -5,17 +6,6 @@ import deepmerge
 import pathlib
 import json
 
-
-# ACTIONS = ['Fy', 'Fz', 'Mz', 'My', 'axial', 'torque']
-
-
-# ACTIONS_BY_TYPE = {
-#         "shear": ["Fy", "Fz"], # action: [possible direction(s)]
-#         "moment": ["Mz", "My"],
-#         "axial": ["axial"], # There are no axial directions; axial is axial!
-#         "torque": ["torque"], # ...same with torque
-#         "deflection": ['dx', 'dy', 'dz']
-# }
 
 ACTION_METHODS = {
     "Fy": "shear",
@@ -298,13 +288,17 @@ def extract_member_actions_by_location(
         - The values are a list of locations on the member from which to
             extract results from.
 
-    'force_extraction_ratios': a dict in the following format:
+    'force_extraction_ratios': a list or a dict in the following format:
 
             {
-                "member01": [0.25, 0.5, 0.77], 
+                "member01": [0.25, 0.5, 0.75], 
                 "member02": [0.333, 0.666],
                 ...    
             }
+
+            -or-
+
+            [0.25, 0.5, 0.75]
 
         Where:
         - "member01" is a member name
@@ -315,6 +309,9 @@ def extract_member_actions_by_location(
 
             Whether the member is the PhysMember3D (main member)
             or a Member3D (sub member, i.e. an individual span).
+        - If a dictionary is supplied, then only those specified members
+            will have extracted results. If a list is supplied, then
+            the extraction ratio locations will apply to all members.
 
     'load_combinations': return results only for these combinations.
         When None, returns all combinations. Default is None.
@@ -377,32 +374,41 @@ def collect_forces_at_location(
     submember: "Pynite.Member3D",
     member_name: str,
     force_extraction_locations: dict, 
-    force_extraction_ratios: dict,
+    force_extraction_ratios: dict | list,
     load_combinations: list[str]
 ) -> dict:
     acc = {}
     for loc in force_extraction_locations.get(member_name,{}):
         acc.update({loc: extract_forces_at_location(submember, loc, load_combinations)})
 
-    for ratio in force_extraction_ratios.get(member_name, {}):
+    if isinstance(force_extraction_ratios, list):
+        ratios_to_extract = force_extraction_ratios
+    elif isinstance(force_extraction_ratios, dict):
+        ratios_to_extract = force_extraction_ratios.get(member_name)
+    else:
+        raise ValueError("force_extraction_ratios must be either a dict or list")
+    
+    for ratio in ratios_to_extract:
         length = submember.L()
         loc = length * ratio
-        acc.update({loc: extract_forces_at_location(submember, loc, load_combinations)})
+        acc.update({ratio: extract_forces_at_location(submember, loc, load_combinations)})
     return acc
 
 
 def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_combinations: list[str]):
     loc = location
     acc = {}
-    for load_combo_name in load_combinations:
-        acc[load_combo_name] = {}
-        for force_direction, method_type in ACTION_METHODS.items():
-            force_method = getattr(member, method_type)
+    for force_direction, method_type in ACTION_METHODS.items():
+        acc.setdefault(force_direction, {})
+        force_method = getattr(member, method_type)
+        for load_combo_name in load_combinations:
             if method_type not in ("axial", "torque"):
                 force_value = round_to_close_integer(force_method(force_direction, loc, load_combo_name))
             else:
                 force_value = round_to_close_integer(force_method(loc, load_combo_name))
-            acc[load_combo_name].update({force_direction: force_value})
+            acc[force_direction].update({load_combo_name: force_value})
+        if all([force_value == 0.0 for force_value in acc[force_direction].values()]):
+            acc.pop(force_direction)
     return acc
 
 
@@ -451,6 +457,7 @@ def extract_span_envelopes(
         member_length = model.members[member_name].L()
         span_envelopes.setdefault(member_name, {})
         inner_acc = span_envelopes[member_name]
+        node_counts = get_node_counts(model, member_name)
         if results_key is not None:
             span_envelopes[member_name].setdefault(results_key, {})
             inner_acc = span_envelopes[member_name][results_key]
@@ -477,7 +484,7 @@ def extract_span_envelopes(
                         x_val_global = x_val_local + length_counter
                         x_length = result_arrays[0][-1]
                         length_counter += x_length
-                        is_cantilevered = member_is_cantilevered(sub_member)
+                        is_cantilevered = member_is_cantilevered(sub_member, node_counts)
                         span_envelope = {
                             "value": round_to_close_integer(envelope_val),
                             "loc_rel": x_val_local,
@@ -509,14 +516,21 @@ def extract_load_combinations(model: "Pynite.FEModel3D") -> list[str]:
     return list(model.load_combos.keys())
 
 
-def member_is_cantilevered(member: "Pynite.Member3D") -> bool:
+def member_is_cantilevered(member: "Pynite.Member3D", node_counts: Counter) -> bool:
     """
     Returns True if a member is cantilevered. False otherwise.
     """
     has_two_supports = member_has_two_supports(member)
     if has_two_supports:
         return False
-    return member_has_reactions_each_end(member)
+    else:
+        i_node = member.i_node
+        j_node = member.j_node
+        return (
+            (node_counts[i_node.name] == 1) and not (node_has_supports(i_node))
+            or
+            ((node_counts[j_node.name] == 1) and not (node_has_supports(j_node)))
+        )
 
 
 def member_has_two_supports(member: "Pynite.Member3D") -> bool:
@@ -562,7 +576,19 @@ def node_has_supports(node: "Pynite.Node") -> bool:
     ])
 
 
-def round_to_close_integer(x: float, eps = 1e-8) -> float | int:
+def get_node_counts(model: "Pynite.FEModel3D", member_name: str) -> Counter:
+    """
+    Counts the number of times that a node is connected within 'member_name'
+    for the purpose of identifying potentially cantilevered sub_members.
+    """
+    node_counts = Counter()
+    for _, sub_member in model.members[member_name].sub_members.items():
+        node_counts.update([sub_member.i_node.name])
+        node_counts.update([sub_member.j_node.name])
+    return node_counts
+
+
+def round_to_close_integer(x: float, eps = 1e-7) -> float | int:
     """
     Rounds to the nearest int if it is REALLY close
     """
@@ -572,40 +598,18 @@ def round_to_close_integer(x: float, eps = 1e-8) -> float | int:
         return x
     
 
-def merge_trees(result_trees: list[dict[str, dict]]) -> dict[str, dict]:
+def merge_result_trees(result_trees: list[dict[str, dict]]) -> dict[str, dict]:
     """
     Merges all of the tress (dictionaries) in 'result_trees'. 
 
-    This is different than a typical dictionary merge (e.g. a | b).
-    It uses the deepmerge package to perform a, well, deep merge
-    of the result trees.
+    This is different than a typical dictionary merge (e.g. a | b)
+    which will merge dictionaries with different keys but will over-
+    write values if two keys are the same.
+
+    Instead, it crawls each branch of the tree and merges the data
+    within each branch, no matter how deep the branches go.
     """
     acc = {}
     for result_tree in result_trees:
         acc = deepmerge.always_merger.merge(acc, result_tree)
     return acc
-
-
-def to_json(filepath: str | pathlib.Path, result_tree: dict[str, dict]) -> None:
-    """
-    Write the data in 'result_tree' to 'filepath'.
-    
-    This is a convenience function that allows you to write to JSON with
-    one line of code. Nothing fancy.
-    """
-    filepath = pathlib.Path(filepath)
-    with open(filepath, 'w') as file:
-        json.dump(result_tree, file)
-
-
-def from_json(filepath: str | pathlib.Path) -> dict[str, dict]:
-    """
-    Read the data from 'filepath' and return the result tree.
-
-    This is a convenience function that allows you to read JSON
-    files with one line of code. Nothing fancy.
-    """
-    filepath = pathlib.Path(filepath)
-    with open(filepath, 'r') as file:
-        result_tree = json.load(file)
-    return result_tree

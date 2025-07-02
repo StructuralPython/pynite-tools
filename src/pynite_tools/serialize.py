@@ -1,9 +1,28 @@
 import json
 import io
+import pathlib
 from pydantic import TypeAdapter, BaseModel, Field
 from typing import Optional, Any, Union, ClassVar, TextIO
 
 from Pynite import FEModel3D, Node3D, Member3D, PhysMember, Material, Section, Spring3D, Quad3D, Plate3D, Mesh, LoadCombo
+
+
+def to_json(model: FEModel3D, filepath: str | pathlib.Path) -> None:
+    """
+    Serializes the model to a new JSON file at 'filepath'.
+    """
+    filepath = pathlib.Path(filepath)
+    with open(filepath, 'w') as file:
+        dump(model, file)
+
+
+def from_json(filepath: str | pathlib.Path) -> FEModel3D:
+    """
+    Reads the JSON file at 'filepath' and returns the Pynite.FEModel3D.
+    """
+    with open(filepath, 'r') as file:
+        model = load(file)
+    return model
 
 
 def dump(model: FEModel3D, file_io: TextIO, indent: int = 2) -> None:
@@ -34,15 +53,14 @@ def dump_dict(model: FEModel3D) -> dict:
     return model_schema.model_dump()
 
 
-
-
 def load(file_io: TextIO) -> FEModel3D:
     """
     Returns an FEModel3D from the json data contained within the file.
     """
     json_data = json.load(file_io)
     model_adapter = TypeAdapter(FEModel3DSchema)
-    return model_adapter.validate_python(json_data)
+    model_schema = model_adapter.validate_python(json_data)
+    return model_schema.to_femodel3d()
 
 
 def loads(model_json: str) -> FEModel3D:
@@ -53,6 +71,18 @@ def loads(model_json: str) -> FEModel3D:
     """
     model_adapter = TypeAdapter(FEModel3DSchema)
     model_schema = model_adapter.validate_json(model_json)
+    femodel3d = model_schema.to_femodel3d()
+    return femodel3d
+
+
+def load_dict(model_dict: dict) -> FEModel3D:
+    """
+    Returns an FEModel3D based on the provided 'model_dict'.
+
+    'model_dict': A JSON-serializable dict representing an FEModel3D
+    """
+    model_adapter = TypeAdapter(FEModel3DSchema)
+    model_schema = model_adapter.validate_python(model_dict)
     femodel3d = model_schema.to_femodel3d()
     return femodel3d
 
@@ -318,15 +348,18 @@ class FEModel3DSchema(BaseModel, ExporterMixin):
             model_objects = {}
             for key_name, schema_object in schema_objects.items():
                 schema_init_dict = schema_object.to_init_dict()
-                print(schema_init_dict)
-                # Modify the init dict with special cases
+
+                # Modify the init dict with special case attributes
                 if "model" in schema_init_dict:
+                    # Need to add the model as an attr to several object types
                     schema_init_dict.update({"model": femodel3d})
                 if "material" in schema_init_dict:
+                    # Need to use the material_name (not the material object) as the init value
                     material_name = schema_init_dict['material'].name
                     schema_init_dict.pop("material")
                     schema_init_dict.update({"material_name": material_name})
                 if "section" in schema_init_dict:
+                    # Same as material_name above but with the section
                     section_name = schema_init_dict['section'].name
                     schema_init_dict.pop("section")
                     schema_init_dict.update({"section_name": section_name})
@@ -342,8 +375,8 @@ class FEModel3DSchema(BaseModel, ExporterMixin):
                         setattr(new_object, attr_name, attr_value)
 
                 # For attr_values that reference nodes, they must reference the original
-                # node in the model (a copy will not suffice because it will not have the
-                # correct .ID attribute).
+                # node in the model (an new-but-equal instance will not suffice because it will 
+                # not have the correct .ID attribute).
                 for attr_name, attr_value in new_object.__dict__.items():
                     if 'node' in attr_name:
                         node_name = attr_value.name

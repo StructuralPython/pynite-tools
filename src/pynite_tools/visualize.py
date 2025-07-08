@@ -408,8 +408,8 @@ class Renderer:
         # Render the deformed shape if requested
         if self.deformed_shape == True:
             # Render deformed nodes
-            # for node in self.model.nodes.values():
-            #     self.plot_deformed_node(node, self.deformed_scale)
+            for node in self.model.nodes.values():
+                self.plot_deformed_node(node, self.deformed_scale)
 
             # Render deformed members
             for member in self.model.members.values():

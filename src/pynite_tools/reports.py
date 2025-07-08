@@ -75,10 +75,10 @@ def extract_node_reactions(
     return reaction_results
 
 
-def extract_node_deflections(
+def extract_node_displacements(
     model: FEModel3D, 
     load_combinations: Optional[list[str]] = None,
-    results_key: Optional[str] = "node_deflections",
+    results_key: Optional[str] = "node_displacements",
 ):
     """
     Returns all node displacements from 'model'.
@@ -93,15 +93,15 @@ def extract_node_deflections(
     """
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
-    node_deflections = {}
+    node_displacements = {}
     # Go through all the nodes...
     for node_name, node in model.nodes.items():
-        node_deflections[node_name] = {}
+        node_displacements[node_name] = {}
 
-        inner_acc = node_deflections[node_name]
+        inner_acc = node_displacements[node_name]
         if results_key is not None:
-            node_deflections[node_name].setdefault(results_key, {})
-            inner_acc = node_deflections[node_name][results_key]
+            node_displacements[node_name].setdefault(results_key, {})
+            inner_acc = node_displacements[node_name][results_key]
         # ...and go through all deflection directions...
         for defl_dir in NODE_DISPLACEMENTS:
             # Get the deflections...
@@ -120,9 +120,9 @@ def extract_node_deflections(
         # But if any of the nodes in the analysis results dict are empty...
         if inner_acc == {}:
             # ...then drop 'em!
-            node_deflections.pop(node_name)
+            node_displacements.pop(node_name)
 
-    return node_deflections
+    return node_displacements
 
 
 def extract_member_arrays(

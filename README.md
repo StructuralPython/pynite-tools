@@ -85,7 +85,7 @@ reactions = pr.extract_node_reactions(
 )
 
 # Returns all node deflections for all load combos
-node_deflections = pr.extract_node_deflections(
+node_displacements = pr.extract_node_displacements(
     model,
     # load_combinations=lcs,
     # results_key=None

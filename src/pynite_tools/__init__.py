@@ -13,7 +13,7 @@ __version__ = "0.1.0"
 
 from .reports import (
     extract_node_reactions,
-    extract_node_deflections,
+    extract_node_displacements,
     extract_member_arrays,
     extract_member_envelopes,
     extract_member_actions_by_location,

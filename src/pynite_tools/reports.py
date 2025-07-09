@@ -369,7 +369,8 @@ def extract_member_actions_by_location(
                         member_name,
                         force_extraction_locations, 
                         force_extraction_ratios, 
-                        load_combinations
+                        load_combinations,
+                        actions
                     )
                 )
         else:
@@ -379,7 +380,8 @@ def extract_member_actions_by_location(
                 member_name,
                 force_extraction_locations,
                 force_extraction_ratios,
-                load_combinations
+                load_combinations,
+                actions
             )
     return force_locations
 

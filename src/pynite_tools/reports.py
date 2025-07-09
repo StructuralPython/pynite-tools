@@ -506,12 +506,19 @@ def extract_span_envelopes(
                         x_length = result_arrays[0][-1]
                         length_counter += x_length
                         is_cantilevered = member_is_cantilevered(sub_member, node_counts)
+                        delta = float(round_to_close_integer(envelope_val))
+                        span_length = float(round_to_close_integer(sub_member.L()))
+                        if delta == 0:
+                            ratio = float('inf')
+                        else:
+                            ratio = abs(span_length / delta)
                         span_envelope = {
-                            "value": round_to_close_integer(envelope_val),
+                            "delta": delta,
                             "loc_rel": x_val_local,
-                            "span_length": sub_member.L(),
+                            "span_length": span_length,
                             "loc_abs": x_val_global,
                             "length": member_length,
+                            "span-to-delta": ratio,
                             "is_cantilever": is_cantilevered
                         }
                         inner_acc[force_direction][lc][envelope_key].append(span_envelope)

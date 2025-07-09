@@ -16,7 +16,9 @@ def plot_model(
         annotation_size: int = 5, 
         labels: bool = True,
         title: str = "Pynite - Simple Finite Element Analysis for Python",
-        loads_color_map: str = "Plotly"
+        loads_color_map: str = "Plotly",
+        width: int = 800,
+        height: int = 800,
 ) -> go.Figure:
     """
     Returns a plotly figure of the Pynite FEModel3D model. 
@@ -34,6 +36,8 @@ def plot_model(
     'labels': When True, labels such as node names and member names
         are displayed.
     'title': The title of the displayed plot
+    'width': The width of the figure in pixels
+    'height': The height of the figure in pixels
     """
     renderer = Renderer(
         model=model,
@@ -41,7 +45,9 @@ def plot_model(
         annotation_size=annotation_size,
         labels=labels,
         title=title,
-        load_color_sequence=loads_color_map
+        load_color_sequence=loads_color_map,
+        window_width=width,
+        window_height=height
     )
     return renderer.render_model()
 

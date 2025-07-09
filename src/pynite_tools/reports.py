@@ -131,6 +131,7 @@ def extract_member_arrays(
     as_lists: bool = False,
     results_key: Optional[str] = "action_arrays",
     load_combinations: Optional[list[str]] = None,
+    actions: Optional[list[str]] = None
 ) -> dict[str, dict]:
     """
     Returns all member action arrays from 'model'. Each array is of
@@ -139,8 +140,6 @@ def extract_member_arrays(
     providing the analysis results.
 
     'model': A solved Pynite.FEModel3D
-    'load_combinations': return results only for these combinations.
-        When None, returns all combinations. Default is None.
     'n_points': The number of points to use to discretize the array.
         default is 1000.
     'as_lists': If True, then the native numpy arrays returned from
@@ -150,20 +149,24 @@ def extract_member_arrays(
         more descriptively in the tree. Useful when merging
         multiple results trees. Setting to None will make
         your result tree one level shallower.
+    'load_combinations': return results only for these combinations.
+        When None, returns all combinations. Default is None.
+    'actions': return results only for these actions. When None,
+        returns all actions. Default is None.
     """
-    forces = {}
-    # For each member...
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
+    if actions is None:
+        actions = list(ACTION_METHODS.keys())
     forces = {}
     for member_name, member in model.members.items():
-        # For each action...
         forces[member_name] = {}
         inner_acc = forces[member_name]
         if results_key is not None:
             forces[member_name].setdefault(results_key, {})
             inner_acc = forces[member_name][results_key]
         for force_direction, method_type in ACTION_METHODS.items():
+            if force_direction not in actions: continue
             inner_acc.setdefault(force_direction, {})
             array_method = getattr(member, f"{method_type}_array")
             accumulator = inner_acc[force_direction]
@@ -201,8 +204,9 @@ def extract_member_arrays(
 
 def extract_member_envelopes(
         model: FEModel3D, 
+        results_key: Optional[str] = "action_envelopes",
         load_combinations: Optional[list[str]] = None,
-        results_key: Optional[str] = "action_envelopes"
+        actions: Optional[list[str]] = None
     ) -> dict[str, dict]:
     """
     Returns member action envelopes for all members in the 'model'.
@@ -210,19 +214,20 @@ def extract_member_envelopes(
     for min/max/absmax values. If an action does not have any 
     analysis results, then its key is excluded from the result
     tree.
-
     'model': A solved Pynite.FEModel3D
-    'load_combinations': return results only for these combinations.
-        When None, returns all combinations. Default is None.
     'results_key': Optional str value used to nest your results
         more descriptively in the tree. Useful when merging
         multiple results trees. Setting to None will make
         your result tree one level shallower.
+    'load_combinations': return results only for these combinations.
+        When None, returns all combinations. Default is None.
+    'actions': return results only for these actions. When None,
+        returns all actions. Default is None.
     """
-
-    # For each member...
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
+    if actions is None:
+        actions = list(ACTION_METHODS.keys())
     forces = {}
     for member_name, member in model.members.items():
         forces[member_name] = {}
@@ -231,6 +236,7 @@ def extract_member_envelopes(
             forces[member_name].setdefault(results_key, {})
             inner_acc = forces[member_name][results_key]
         for force_direction, method_type in ACTION_METHODS.items():
+            if force_direction not in actions: continue
             inner_acc[force_direction] = {}
             max_method = getattr(member, f"max_{method_type}")
             min_method = getattr(member, f"min_{method_type}")
@@ -269,9 +275,10 @@ def extract_member_actions_by_location(
     model: FEModel3D, 
     force_extraction_locations: Optional[dict[str, list[float]]] = None,
     force_extraction_ratios: Optional[dict[str, list[float]]] = None,
-    load_combinations: Optional[list[str]] = None,
     by_span: bool = False,
-    results_key: Optional[str] = "action_locations"
+    results_key: Optional[str] = "action_locations",
+    load_combinations: Optional[list[str]] = None,
+    actions: Optional[list[str]] = None,
 ) -> dict[str, dict]:
     """
     Returns member actions  for all members in the 'model' at the
@@ -323,6 +330,10 @@ def extract_member_actions_by_location(
         more descriptively in the tree. Useful when merging
         multiple results trees. Setting to None will make
         your result tree one level shallower.
+    'load_combinations': return results only for these combinations.
+        When None, returns all combinations. Default is None.
+    'actions': return results only for these actions. When None,
+        returns all actions. Default is None.
     """
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
@@ -342,11 +353,13 @@ def extract_member_actions_by_location(
             inner_acc = force_locations[member_name][results_key]
             parent_acc = force_locations[member_name]
             path = results_key
-        if member_name not in (
-            list(force_extraction_locations.keys()) 
-            + list(force_extraction_ratios.keys())
+        if (
+            member_name not in force_extraction_locations
+            and isinstance(force_extraction_ratios, dict)
+            and member_name not in force_extraction_ratios
         ):
             continue
+
         if by_span:
             inner_acc.setdefault("by_span", [])
             for sub_member in member.sub_members.values():
@@ -376,7 +389,8 @@ def collect_forces_at_location(
     member_name: str,
     force_extraction_locations: dict, 
     force_extraction_ratios: dict | list,
-    load_combinations: list[str]
+    load_combinations: list[str],
+    actions: Optional[list[str]] = None
 ) -> dict:
     acc = {}
     for loc in force_extraction_locations.get(member_name,{}):
@@ -392,14 +406,17 @@ def collect_forces_at_location(
     for ratio in ratios_to_extract:
         length = submember.L()
         loc = length * ratio
-        acc.update({ratio: extract_forces_at_location(submember, loc, load_combinations)})
+        acc.update({ratio: extract_forces_at_location(submember, loc, load_combinations, actions)})
     return acc
 
 
-def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_combinations: list[str]):
+def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_combinations: list[str], actions: Optional[list[str]] = None):
     loc = location
     acc = {}
+    if actions is None:
+        actions = list(ACTION_METHODS.keys())
     for force_direction, method_type in ACTION_METHODS.items():
+        if force_direction not in actions: continue
         acc.setdefault(force_direction, {})
         force_method = getattr(member, method_type)
         for load_combo_name in load_combinations:
@@ -415,9 +432,9 @@ def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_
 
 def extract_span_envelopes(
     model: FEModel3D, 
-    load_combinations: Optional[list[str]] = None, 
-    actions: Optional[list[str]] = None,
     results_key: Optional[str] = "frame_span_envelopes",
+    load_combinations: Optional[list[str]] = None,
+    actions: Optional[list[str]] = None
 ) -> dict:
     """
     Returns a dict of the following shape which represents the results extract from each span of
@@ -447,7 +464,7 @@ def extract_span_envelopes(
         possible actions: {'Fy', 'Fz', 'My', 'Mz', 'axial', 'torque', 'dy', 'dx'}
     """
     if actions is None:
-        actions = ['Fy', 'Fz', 'My', 'Mz', 'axial', 'torque', 'dy', 'dx']
+        actions = list(ACTION_METHODS.keys())
     max_min = ['max', 'min']
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
@@ -463,6 +480,7 @@ def extract_span_envelopes(
             span_envelopes[member_name].setdefault(results_key, {})
             inner_acc = span_envelopes[member_name][results_key]
         for force_direction, method_type in ACTION_METHODS.items():
+            if force_direction not in actions: continue
             inner_acc.setdefault(force_direction, {})
             for lc in load_combinations:
                 inner_acc[force_direction].setdefault(lc, {})

@@ -19,7 +19,6 @@ from .reports import (
     extract_member_actions_by_location,
     extract_span_envelopes,
     extract_load_combinations,
-    extract_spans,
     merge_result_trees
 )
 
@@ -36,4 +35,9 @@ from .serialize import (
 
 from .combos import (
     model_add_combos,
+)
+
+from .visualize import (
+    plot_model,
+    Renderer
 )

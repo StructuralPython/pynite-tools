@@ -433,7 +433,8 @@ def extract_forces_at_location(member: "Pynite.Member3D", location: float, load_
 
 
 def extract_span_envelopes(
-    model: FEModel3D, 
+    model: FEModel3D,
+    include_span_to_delta: bool = True,
     results_key: Optional[str] = "frame_span_envelopes",
     load_combinations: Optional[list[str]] = None,
     actions: Optional[list[str]] = None
@@ -518,9 +519,10 @@ def extract_span_envelopes(
                             "span_length": span_length,
                             "loc_abs": x_val_global,
                             "length": member_length,
-                            "span-to-delta": ratio,
                             "is_cantilever": is_cantilevered
                         }
+                        if include_span_to_delta:
+                            span_envelope.update({"span-to-delta": ratio})
                         inner_acc[force_direction][lc][envelope_key].append(span_envelope)
     return span_envelopes
 

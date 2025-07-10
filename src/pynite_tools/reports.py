@@ -510,7 +510,7 @@ def extract_span_envelopes(
                         delta = float(round_to_close_integer(envelope_val))
                         span_length = float(round_to_close_integer(sub_member.L()))
                         if delta == 0:
-                            ratio = float('inf')
+                            ratio = None
                         else:
                             ratio = abs(span_length / delta)
                         span_envelope = {

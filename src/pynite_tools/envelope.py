@@ -4,7 +4,7 @@ from typing import Hashable
 PYMAX = max
 PYMIN = min
 
-def envelope_tree(tree: dict | list, levels: list[Hashable | None], leaf: Hashable | None, agg_func: callable) -> dict:
+def envelope_tree(tree: dict | list, levels: list[Hashable | None], leaf: Hashable | None, agg_func: callable, with_trace: bool = True) -> dict:
     """
     Envelopes the tree at the leaf node with 'agg_func'.
     """
@@ -29,19 +29,22 @@ def envelope_tree(tree: dict | list, levels: list[Hashable | None], leaf: Hashab
         except ValueError: # The value was transformed, likely due to abs()
             env_key = env_keys[env_values.index(-1 * env_value)]
         env_acc.update({"key": env_key, "value": env_value})
-        return env_acc
+        if with_trace:
+            return env_acc
+        else:
+            return env_value
     else:
         # Otherwise, pop the next level and dive into the tree on that branch
         level = levels[0]
         if level is not None:
-            env_acc.update({level: envelope_tree(tree[level], levels[1:], leaf, agg_func)})
+            env_acc.update({level: envelope_tree(tree[level], levels[1:], leaf, agg_func, with_trace)})
             return env_acc
         else:
             # If None, then walk all branches of this node of the tree
             if isinstance(tree, list):
                 tree = {idx: leaf for idx, leaf in enumerate(tree)}
             for k, v in tree.items():
-                env_acc.update({k: envelope_tree(v, levels[1:], leaf, agg_func)})
+                env_acc.update({k: envelope_tree(v, levels[1:], leaf, agg_func, with_trace)})
             return env_acc
 
     

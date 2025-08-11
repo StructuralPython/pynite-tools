@@ -41,11 +41,3 @@ from .visualize import (
     plot_model,
     Renderer
 )
-
-from .envelope import (
-    envelope_tree,
-    absmax,
-    absmin,
-    max,
-    min
-)

@@ -6,6 +6,7 @@ import deepmerge
 import pathlib
 import json
 from Pynite import FEModel3D
+from .envelope import max, min
 
 
 ACTION_METHODS = {
@@ -437,7 +438,8 @@ def extract_span_envelopes(
     include_span_to_delta: bool = True,
     results_key: Optional[str] = "frame_span_envelopes",
     load_combinations: Optional[list[str]] = None,
-    actions: Optional[list[str]] = None
+    actions: Optional[list[str]] = None,
+    n_points: int = 1000
 ) -> dict:
     """
     Returns a dict of the following shape which represents the results extract from each span of
@@ -446,36 +448,61 @@ def extract_span_envelopes(
         {
             "member": {
                 "result_key": {
-                    "Action": { # Where Action is one of My, Mz, Fy, Fz, axial, torque, dx, dy 
-                        "LC1": { 
-                            "max": [
-                                {"value": Yi, "loc_rel": xi, "span_length": li, "loc_abs": Xi, "span": Li},
-                                ...
-                            ],
-                            "min": [
-                                {"value": Yi, "loc_rel": xi, "span_length": li, "loc_abs": Xi, "span": Li},
-                                ...
-                            ]
+                    "Action": [ # Where Action is one of My, Mz, Fy, Fz, axial, torque, dx, dy
+                            {  # 1st span
+                                "delta_max": {
+                                    "LC1": ...,
+                                    "LC2": ...,
+                                },
+                                "delta_min": {
+                                    "LC1": ...,
+                                    "LC2": ...,
+                                },
+                                "span": l,
+                                "loc_max_delta": ...,
+                                "loc_min_delta": ...,
+                                "cantilever": True/False,
+                            },
+                            { # 2nd span
+                                "delta_max": {
+                                    "LC1": ...,
+                                    "LC2": ...,
+                                },
+                                "delta_min": {
+                                    "LC1": ...,
+                                    "LC2": ...,
+                                },
+                                "span": l,
+                                "loc_max_delta": ...,
+                                "loc_min_delta": ...,
+                                "cantilever": True/False,
+                            },
+                            # ... etc.
                         },
-
-                    },
+                    }
                 },
             },
         }
+    'model': The FEModel3D
+    'include_span_to_delta': If True, will include the span-to-delta ratio in the results
+    'results_key': The key used to specially demarcate this set of results in the final dict.
+        Default is 'frame_span_envelopes'.
     'load_combinations': If provided, will only extract these load combinations (extract all if None)
     'actions': If provided, will only extract these actions (extract all if None)
         possible actions: {'Fy', 'Fz', 'My', 'Mz', 'axial', 'torque', 'dy', 'dx'}
+    'n_points': Used internally to generate the action array which is used to find
+        the location of max/min. The higher the number, the more precise the result.
+        Default is 1000.
     """
     if actions is None:
         actions = list(ACTION_METHODS.keys())
     max_min = ['max', 'min']
     if load_combinations is None:
         load_combinations = extract_load_combinations(model)
-    n_points = 1000
+    n_points = n_points
     member_spans = extract_spans(model)
     span_envelopes = {}
     for member_name, sub_members in member_spans.items():
-        member_length = model.members[member_name].L()
         span_envelopes.setdefault(member_name, {})
         inner_acc = span_envelopes[member_name]
         node_counts = get_node_counts(model, member_name)
@@ -485,15 +512,21 @@ def extract_span_envelopes(
         for force_direction, method_type in ACTION_METHODS.items():
             if force_direction not in actions: continue
             inner_acc.setdefault(force_direction, {})
-            for lc in load_combinations:
-                inner_acc[force_direction].setdefault(lc, {})
-                method_name = f"{method_type}_array"
+            method_name = f"{method_type}_array"
+            for idx, sub_member in enumerate(sub_members):
+                method = getattr(sub_member, method_name)
+                inner_acc[force_direction].update({idx: {}})
+                is_cantilevered = member_is_cantilevered(sub_member, node_counts)
+                span_length = float(round_to_close_integer(sub_member.L()))
+                span_data = {
+                        "span_length": span_length,
+                        "is_cantilever": is_cantilevered,
+                }
                 for envelope in max_min:
-                    envelope_key = f"span_envelope_{envelope}"
-                    inner_acc[force_direction][lc].setdefault(envelope_key, [])
-                    length_counter = 0
-                    for sub_member in sub_members:
-                        method = getattr(sub_member, method_name)
+                    envelope_key = f"delta_{envelope}"
+                    inner_acc[force_direction][idx].setdefault(envelope_key, {})
+                    x_val_locals = []
+                    for lc in load_combinations:
                         if method_type not in ('axial', 'torque'):
                             result_arrays = method(force_direction, n_points=n_points, combo_name=lc)
                         else:
@@ -503,29 +536,31 @@ def extract_span_envelopes(
                         envelope_val = envelope_func(result_arrays[1])
                         envelope_idx = locator_func(result_arrays[1])
                         x_val_local = result_arrays[0][envelope_idx]
-                        x_val_global = x_val_local + length_counter
-                        x_length = result_arrays[0][-1]
-                        length_counter += x_length
-                        is_cantilevered = member_is_cantilevered(sub_member, node_counts)
+                        x_val_locals.append(x_val_local)
                         delta = float(round_to_close_integer(envelope_val))
-                        span_length = float(round_to_close_integer(sub_member.L()))
-                        if delta == 0:
-                            ratio = None
-                        else:
-                            ratio = abs(span_length / delta)
                         span_envelope = {
-                            "delta": delta,
-                            "loc_rel": x_val_local,
-                            "span_length": span_length,
-                            "loc_abs": x_val_global,
-                            "length": member_length,
-                            "is_cantilever": is_cantilevered
+                            lc: delta,
                         }
-                        if include_span_to_delta:
-                            span_envelope.update({"span-to-delta": ratio})
-                        inner_acc[force_direction][lc][envelope_key].append(span_envelope)
+                        inner_acc[force_direction][idx][envelope_key].update(span_envelope)
+                    agg_func = max
+                    if envelope == "min":
+                        agg_func = min
+                    # Envelope the deltas
+                    env_value = agg_func(inner_acc[force_direction][idx][envelope_key].values())
+                    env_value_idx = list(inner_acc[force_direction][idx][envelope_key].values()).index(env_value)
+                    env_value_loc = float(x_val_locals[env_value_idx])
+                    span_data.update({
+                        f"{envelope}_delta_{envelope}": env_value,
+                        f"loc_{envelope}_delta": env_value_loc,
+                    })
+                if include_span_to_delta:
+                    abs_max_delta = max([abs(span_data['max_delta_max']), abs(span_data['min_delta_min'])])
+                    ratio = None
+                    if abs_max_delta != 0.0:
+                        ratio = span_length / abs_max_delta                    
+                    span_data.update({"delta_abs_max": abs_max_delta, "span_to_delta_max": ratio})
+                inner_acc[force_direction][idx].update(span_data)
     return span_envelopes
-
 
 def extract_spans(model: FEModel3D) -> dict[str, list["Pynite.Member3D"]]:
     """

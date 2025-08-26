@@ -37,6 +37,10 @@ def envelope_tree(tree: dict | list, levels: list[Hashable | None], leaf: Hashab
         # Otherwise, pop the next level and dive into the tree on that branch
         level = levels[0]
         if level is not None:
+            try:
+                tree[level]
+            except KeyError:
+                raise KeyError(f"Key '{level}' does not exist at this level. Available keys: {list(tree.keys())}")
             env_acc.update({level: envelope_tree(tree[level], levels[1:], leaf, agg_func, with_trace)})
             return env_acc
         else:

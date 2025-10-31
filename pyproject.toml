@@ -5,19 +5,20 @@ readme = "README.md"
 authors = [
     { name = "Connor Ferster", email = "connorferster@gmail.com" }
 ]
+# TODO: These dependency updates rely on pydantic_core>=2.41.1 being published to emscripten-forge
+# At time of writing (2025-10-31), only 2.41.0 is published, which is incompatible.
+# - Consider creating a branch for pynite-tools that is compatible with JupyterLite so that JupyterLite does not hold the package back.
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.0.2",
     "plotly>=6.2.0",
     "plotly-3d-primitives>=0.4.0",
-    "pydantic_core==2.27.2",
-    "pydantic==2.10.6",
-    "pynitefea==1.1.2",
+    "pydantic_core==2.41.1",
+    "pydantic==2.12.0",
+    "pynitefea==1.6.2",
     "deepmerge>=2.0",
 ]
 
-[project.scripts]
-pynite-tools = "pynite_tools:main"
 
 [build-system]
 requires = ["flit_core>=3.2,<4"]

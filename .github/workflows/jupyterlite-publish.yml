@@ -1,0 +1,33 @@
+name: Build wheel and Publish wheel to Bunny.net
+
+on:
+  push:
+    branches:
+    - jupyterlite  # specify 'master' if that is your main branch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install uv
+        uv sync
+    - name: Build package
+      run: |
+        uv build --wheel
+    - name: Deploy to BunnyCDN
+      uses: ayeressian/bunnycdn-storage-deploy@v2.3.0 #
+      with:
+          source: "./dist"
+          destination: "wheels/"
+          storageZoneName: "${{ secrets.STORAGE_NAME }}"
+          storagePassword: "${{ secrets.STORAGE_PASSWORD }}"
+          accessKey: "${{ secrets.STORAGE_KEY }}"
+          pullZoneId: "${{ secrets.ZONE_ID }}"
+          upload: "true"
+          remove: "true"
+          purgePullZone: "true"
+          purgePullZoneDelay: "5"

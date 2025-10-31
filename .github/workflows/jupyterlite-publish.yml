@@ -22,7 +22,7 @@ jobs:
       uses: ayeressian/bunnycdn-storage-deploy@v2.3.0 #
       with:
           source: "./dist"
-          destination: "wheels/"
+          destination: "wheels/pynite-tools"
           storageZoneName: "${{ secrets.STORAGE_NAME }}"
           storagePassword: "${{ secrets.STORAGE_PASSWORD }}"
           accessKey: "${{ secrets.STORAGE_KEY }}"

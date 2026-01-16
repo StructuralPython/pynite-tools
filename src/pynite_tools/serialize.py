@@ -153,7 +153,7 @@ class Node3DSchema(BaseModel, ExporterMixin):
     contour: list[float] = []
     model: Optional[Any] = Field(exclude=True, default=None)
     
-    _init_attrs: ClassVar[Optional[list[str]]] = ["name", "X", "Y", "Z"]
+    _init_attrs: ClassVar[Optional[list[str]]] = ["model", "name", "X", "Y", "Z"]
     _pynite_class: ClassVar[type] = Node3D.Node3D
 
 class Plate3DSchema(BaseModel, ExporterMixin):

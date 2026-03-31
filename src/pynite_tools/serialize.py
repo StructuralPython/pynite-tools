@@ -5,7 +5,12 @@ from pydantic import TypeAdapter, BaseModel, Field
 from typing import Optional, Any, Union, ClassVar, TextIO
 
 from Pynite import FEModel3D, Node3D, Member3D, PhysMember, Material, Section, Spring3D, Quad3D, Plate3D, Mesh, LoadCombo
+import Pynite
 
+pynite_version = Pynite.__version__
+node_init_attrs = ["model", "name", "X", "Y", "Z"]
+if int(pynite_version[0]) < 2:
+    node_init_attrs = ["name", "X", "Y", "Z"]
 
 def to_json(model: FEModel3D, filepath: str | pathlib.Path) -> None:
     """
@@ -120,6 +125,7 @@ class Node3DSchema(BaseModel, ExporterMixin):
     """
     A class representing a node in a 3D finite element model.
     """
+    model: Optional[Any] = Field(exclude=True)
     name: str                 # A unique name for the node assigned by the user   
     X: float          # Global X coordinate
     Y: float          # Global Y coordinate
@@ -152,8 +158,7 @@ class Node3DSchema(BaseModel, ExporterMixin):
     EnforcedRZ: float | None = None
     contour: list[float] = []
     model: Optional[Any] = Field(exclude=True, default=None)
-    
-    _init_attrs: ClassVar[Optional[list[str]]] = ["name", "X", "Y", "Z"]
+    _init_attrs: ClassVar[Optional[list[str]]] = node_init_attrs
     _pynite_class: ClassVar[type] = Node3D.Node3D
 
 class Plate3DSchema(BaseModel, ExporterMixin):

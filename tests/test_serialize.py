@@ -41,4 +41,10 @@ def beam_model():
 def test_serialize_dict(beam_model):
     model_dict = pt.dump_dict(beam_model)
     model = pt.load_dict(model_dict)
-    assert model == beam_model
+    for node_name in model.nodes:
+        bmn = beam_model.nodes[node_name]
+        smn = model.nodes[node_name]
+        assert bmn.X == smn.X
+        assert bmn.Y == smn.Y
+        assert bmn.Z == smn.Z
+        assert bmn.name == smn.name

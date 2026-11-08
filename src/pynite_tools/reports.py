@@ -527,10 +527,12 @@ def extract_span_envelopes(
                     inner_acc[force_direction][idx].setdefault(envelope_key, {})
                     x_val_locals = []
                     for lc in load_combinations:
-                        if method_type not in ('axial', 'torque'):
-                            result_arrays = method(force_direction, n_points=n_points, combo_name=lc)
-                        else:
+                        if method_type == 'torque':
+                            result_arrays = submember_torque_array(sub_member, n_points=n_points, combo_name=lc)
+                        elif method_type == 'axial':
                             result_arrays = method(n_points=n_points, combo_name=lc)
+                        else:
+                            result_arrays = method(force_direction, n_points=n_points, combo_name=lc)
                         locator_func = getattr(np, f'arg{envelope}')
                         envelope_func = getattr(np, envelope)
                         envelope_val = envelope_func(result_arrays[1])
@@ -561,6 +563,23 @@ def extract_span_envelopes(
                     span_data.update({"delta_abs_max": abs_max_delta, "span_to_delta_max": ratio})
                 inner_acc[force_direction][idx].update(span_data)
     return span_envelopes
+
+def submember_torque_array(member: "Pynite.Member3D", n_points: int, combo_name: str) -> np.ndarray:
+    """
+    Returns the torque array of shape (2, n_points) for a Member3D (e.g. a sub-member).
+
+    Works around a Pynite bug (present in at least 2.4.1 through 3.2.1) where
+    Member3D.torque_array() evaluates the z-bending segments, whose torque is never set,
+    and so returns an array of None values. In that case the array is built from
+    Member3D.torque(), which evaluates the torsion segments correctly.
+    """
+    result_arrays = member.torque_array(n_points=n_points, combo_name=combo_name)
+    if result_arrays.dtype != object and not np.isnan(result_arrays.astype(float)).any():
+        return result_arrays
+    x_array = np.linspace(0, member.L(), n_points)
+    torques = [member.torque(x, combo_name=combo_name) for x in x_array]
+    return np.array([x_array, torques], dtype=float)
+
 
 def extract_spans(model: FEModel3D) -> dict[str, list["Pynite.Member3D"]]:
     """

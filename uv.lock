@@ -905,7 +905,7 @@ requires-dist = [
     { name = "plotly-3d-primitives", specifier = ">=0.4.0" },
     { name = "pydantic", specifier = ">=2.12.0" },
     { name = "pydantic-core", specifier = ">=2.41.1" },
-    { name = "pynitefea", specifier = ">=2.0.0" },
+    { name = "pynitefea", specifier = ">=2.1.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -916,7 +916,7 @@ dev = [
 
 [[package]]
 name = "pynitefea"
-version = "2.4.1"
+version = "3.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
@@ -924,9 +924,9 @@ dependencies = [
     { name = "prettytable" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/9d/07c8e1710d4d0caa6c182b1bf4408708cdfb5467ce93b806e864746f2183/pynitefea-2.4.1.tar.gz", hash = "sha256:757342047ee26970fe6223966c683b9d8367fd8186dab1053c1d685f95ca9e52", size = 187199, upload-time = "2026-03-09T15:28:10.108Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/eb/d17716c18f202acfd41a0453adb96f950c64b44ed46a15b5cf876b313e88/pynitefea-3.2.1.tar.gz", hash = "sha256:ed3200dfd04ce29fd1c03f0a9d5cc6a9ac58190e1742b0355efce4490f6241f1", size = 203052, upload-time = "2026-10-29T03:51:49.505Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/a1/bc24eb41c4ea817f3eddb3ab22798bee92ee14dd31dd60868530cd86e597/pynitefea-2.4.1-py3-none-any.whl", hash = "sha256:77b09aa51eeff8a0e5571a5a6ecf92feee54173780934d81d0253aca725bb506", size = 190100, upload-time = "2026-03-09T15:28:08.807Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/3f/8e48012ff4c0e9b3c663f463028a0dbfd729e6d0c6edd305429004856c72/pynitefea-3.2.1-py3-none-any.whl", hash = "sha256:4b00443e29ca7bcc747676fc3fcc680888a610c809c29828154b20dd1b7d180f", size = 204916, upload-time = "2026-10-29T03:51:48.334Z" },
 ]
 
 [[package]]

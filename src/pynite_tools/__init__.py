@@ -9,7 +9,7 @@ Modules included:
 - combos: Functions for bulk importing load combinations
 """
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"
 
 from .reports import (
     extract_node_reactions,

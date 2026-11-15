@@ -48,3 +48,23 @@ def test_serialize_dict(beam_model):
         assert bmn.Y == smn.Y
         assert bmn.Z == smn.Z
         assert bmn.name == smn.name
+
+def test_dump_records_library_and_generator_versions(beam_model):
+    import Pynite
+    from pytest import raises
+
+    data = pt.serialize.dump_dict(beam_model)
+    assert data["metadata"] == {
+        "library": "Pynite",
+        "library_version": Pynite.__version__,
+        "generator": "pynite-tools",
+        "generator_version": pt.__version__,
+    }
+    # Optional on load, so older files still load...
+    old = dict(data)
+    del old["metadata"]
+    assert "M1" in pt.serialize.load_dict(old).members
+    # ...but a model for another library is refused.
+    data["metadata"]["library"] = "pycba"
+    with raises(ValueError, match="for 'pycba', not 'Pynite'"):
+        pt.serialize.load_dict(data)

@@ -5,6 +5,17 @@ The schemas in this module mirror the *input* data of a Pynite model (geometry,
 properties, supports, loads, load combinations and mesh/shear wall/mat foundation
 definitions). Analysis results are not serialized; re-run the analysis after loading.
 
+Every dumped model also carries a `metadata` block saying which library the
+model is for, that library's version, and the package and version that wrote
+it:
+
+    "metadata": {"library": "Pynite", "library_version": "3.2.1",
+                 "generator": "pynite-tools", "generator_version": "0.9.0"}
+
+The same block, with "pycba" and "pycba-tools", is written by
+pycba_tools.serialize. It is optional when loading, so older files still load,
+but a model written for another library is refused.
+
 Models are rebuilt through FEModel3D's public `add_*` API so that every object is
 constructed exactly as Pynite expects.
 """
@@ -12,13 +23,16 @@ import json
 import pathlib
 from typing import Any, Literal, Optional, TextIO
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 import Pynite
 from Pynite import FEModel3D
 from Pynite import Mesh as pynite_mesh
 
 pynite_version = Pynite.__version__
+
+LIBRARY = "Pynite"
+GENERATOR = "pynite-tools"
 
 
 def to_json(model: FEModel3D, filepath: str | pathlib.Path) -> None:
@@ -551,10 +565,36 @@ class MatFoundationSchema(_Schema):
 # The model
 # ---------------------------------------------------------------------------
 
+class MetadataSchema(_Schema):
+    """
+    Which library a model is for and what wrote it. When a model is dumped,
+    the versions are those installed.
+    """
+
+    library: Literal["Pynite"] = LIBRARY
+    library_version: Optional[str] = Field(default_factory=lambda: pynite_version)
+    generator: Optional[str] = GENERATOR
+    generator_version: Optional[str] = Field(default_factory=lambda: _generator_version())
+
+    @field_validator("library", mode="before")
+    @classmethod
+    def _for_pynite(cls, value):
+        if value != LIBRARY:
+            raise ValueError(f"this model is for {value!r}, not {LIBRARY!r}; load it with that library's tools package")
+        return value
+
+
+def _generator_version() -> str:
+    from . import __version__
+
+    return __version__
+
+
 class FEModel3DSchema(_Schema):
     """A 3D finite element model object. This object has methods and dictionaries to create, store,
        and retrieve results from a finite element model.
     """
+    metadata: MetadataSchema = Field(default_factory=MetadataSchema)
     nodes: dict[str, Node3DSchema] = {}
     materials: dict[str, MaterialSchema] = {}
     sections: dict[str, SectionSchema] = {}

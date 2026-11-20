@@ -202,7 +202,7 @@ and the package and version that wrote it:
   "library": "Pynite",
   "library_version": "3.2.1",
   "generator": "pynite-tools",
-  "generator_version": "0.9.0"
+  "generator_version": "0.10.0"
 }
 ```
 
@@ -232,3 +232,50 @@ model = pc.model_add_combos(load_combos, model, as_copy=True)
 ```
 
 
+
+## Examples: `foundation`
+
+Pynite has no foundation element. `add_elastic_foundation` puts a member on a Winkler foundation
+of modulus `kf` (force per length, per length of member: a subgrade modulus times the member's
+width) as closely spaced nodes, each with a vertical spring of `kf` times its tributary length.
+
+```python
+from Pynite import FEModel3D
+import pynite_tools as pt
+
+model = FEModel3D(...)   # a member "F1" along X, loaded in Y
+
+foundation = pt.add_elastic_foundation(
+    model, "F1",
+    kf=2.5e6,          # 5 MPa/m under a 0.5 m wide footing, in N/m/m
+    direction="-",     # compression only: the member can lift off (None: both ways)
+    # x1=..., x2=...   # part of the member (default: all of it)
+    # spacing=...      # default: a 40th of the characteristic length (4 E I / kf) ** 0.25
+)
+model.analyze()        # iterates the compression-only springs
+
+x, p = foundation.reaction_array(model, "Combo 1")   # force per length, up positive
+```
+
+- The member's own nodes, and any others along it within the foundation, are used as they
+  are. A node with a support or a spring in the foundation's direction can't also carry it.
+- The springs are ordinary Pynite support springs, so the model serializes and loads with them.
+- At the default spacing, deflections are within about 0.3% of a continuous foundation (checked
+  against pycba-tools' foundation elements), including where a compression-only foundation's
+  contact ends. Much closer spacing makes the stiffness matrix ill-conditioned, and Pynite's
+  stability check may then report a well-supported beam as unstable.
+- Unequal stiffnesses in tension and compression can't be modelled: Pynite allows one spring per
+  direction at a node. pycba-tools' `kf_tension` can.
+
+### `split_dist_loads`
+
+In Pynite 3.2.1 a trapezoidal distributed load gives the wrong intensity to a sub-member it runs
+right across (one with the load's start before it and its end after it). A physical member with
+three or more sub-members under one trapezoidal load then carries the wrong total: 93.0 kN
+instead of 87.5 kN on a six-span beam. `split_dist_loads(model, member_name=None)` splits each
+distributed load at the nodes along its member, so no piece runs right across a sub-member.
+`add_elastic_foundation` does this for its member.
+
+```python
+pt.split_dist_loads(model)        # every member, before model.analyze()
+```

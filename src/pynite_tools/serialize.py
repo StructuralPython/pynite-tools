@@ -10,7 +10,7 @@ model is for, that library's version, and the package and version that wrote
 it:
 
     "metadata": {"library": "Pynite", "library_version": "3.2.1",
-                 "generator": "pynite-tools", "generator_version": "0.9.0"}
+                 "generator": "pynite-tools", "generator_version": "0.10.0"}
 
 The same block, with "pycba" and "pycba-tools", is written by
 pycba_tools.serialize. It is optional when loading, so older files still load,

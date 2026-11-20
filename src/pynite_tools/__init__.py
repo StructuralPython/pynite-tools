@@ -5,11 +5,11 @@ Modules included:
 
 - reports: Functions for bulk exporting structured analysis results
 - serialize: Functions for serializing/deserializing FEModel3D objects
-- loads: Functions for enhancing load assignment to members and nodes
 - combos: Functions for bulk importing load combinations
+- foundation: Beams on an elastic (Winkler) foundation, and splitting distributed loads at nodes
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 from .reports import (
     extract_node_reactions,
@@ -35,6 +35,12 @@ from .serialize import (
 
 from .combos import (
     model_add_combos,
+)
+
+from .foundation import (
+    Foundation,
+    add_elastic_foundation,
+    split_dist_loads,
 )
 
 from .visualize import (
